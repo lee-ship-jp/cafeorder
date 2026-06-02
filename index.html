@@ -38,6 +38,14 @@
       animation: pulse 1.6s infinite;
     }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+    .sync-pill {
+      font-size: 0.62rem; font-weight: 700; padding: 2px 8px;
+      border-radius: 999px; color: #fff; cursor: default; white-space: nowrap;
+      background: rgba(255,255,255,0.2);
+    }
+    .sync-pill.cloud { background: rgba(110,231,183,0.35); }
+    .sync-pill.local { background: rgba(255,255,255,0.22); }
+    .sync-pill.error { background: #DC2626; }
 
     /* ===== BOTTOM NAV ===== */
     .bottom-nav {
@@ -407,6 +415,7 @@
     <span class="header-icon" id="headerIcon">☕</span>
     <span class="header-title" id="headerTitle">JMCC Cafe</span>
     <span class="live-dot" id="liveDot" style="display:none"></span>
+    <span class="sync-pill local" id="syncPill" title="">…</span>
   </div>
   <div class="header-right" id="headerRight">
     <span class="header-badge" id="customerBadge">No customer selected</span>
@@ -550,9 +559,102 @@ let hExpanded  = new Set();
 
 MENU.forEach(m => { qtyMap[m.id] = 1; if (m.hasTemp) tempMap[m.id] = "ice"; });
 
-/* ─── STORAGE HELPERS ─── */
-function getOrders()   { return JSON.parse(localStorage.getItem("cafe_orders") || "[]"); }
-function saveOrders(o) { localStorage.setItem("cafe_orders", JSON.stringify(o)); localStorage.setItem("cafe_update", Date.now()); }
+/* ─── CLOUD CONFIG ────────────────────────────────────────────────
+   Paste your Google Apps Script Web App URL between the quotes below
+   (see APPS_SCRIPT_SETUP.md). It looks like:
+     https://script.google.com/macros/s/AKfy..../exec
+   Until a valid URL is set, the app runs in LOCAL-ONLY mode.        */
+const APPS_SCRIPT_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+const CLOUD_READY = /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(APPS_SCRIPT_URL);
+
+/* ─── ORDER CACHE (single source of truth for every screen) ─── */
+let ordersCache = [];
+function getOrders() { return ordersCache.slice(); }
+
+/* Called whenever fresh data arrives (cloud poll or local write) */
+function applyOrdersSnapshot(orders) {
+  ordersCache = Array.isArray(orders) ? orders : [];
+  pruneKSelected();
+  updateKNavBadge();
+  if (currentTab === "kitchen") renderKitchen();
+  if (currentTab === "history") renderHistory();
+}
+
+/* Drop kitchen selections whose item is no longer pending (changed elsewhere) */
+function pruneKSelected() {
+  const valid = new Set();
+  ordersCache.forEach(o => (o.items || []).forEach(i => {
+    if (i.status === "pending") valid.add(`${o.id}::${i.itemId}`);
+  }));
+  [...kSelected].forEach(k => { if (!valid.has(k)) kSelected.delete(k); });
+}
+
+/* ─── SYNC STATUS PILL ─── */
+function setSyncStatus(mode) {
+  const el = document.getElementById("syncPill");
+  if (!el) return;
+  if (mode === "cloud")        { el.textContent = "☁️ Synced";  el.title = "Cloud sync on — shared across all devices"; el.className = "sync-pill cloud"; }
+  else if (mode === "syncing") { el.textContent = "⏳ Syncing"; el.title = "Connecting to the cloud…";                 el.className = "sync-pill cloud"; }
+  else if (mode === "error")   { el.textContent = "⚠️ Offline"; el.title = "Could not reach the cloud — retrying";    el.className = "sync-pill error"; }
+  else                         { el.textContent = "📴 Local";   el.title = "This device only — add the Web App URL to sync"; el.className = "sync-pill local"; }
+}
+
+/* ─── BACKEND: Google Apps Script (cloud) or localStorage (fallback) ─── */
+function makeCloudBackend() {
+  async function post(action, payload) {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      // text/plain keeps this a "simple" request → no CORS preflight
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action, payload })
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }
+  async function refresh() {
+    try {
+      const res = await fetch(APPS_SCRIPT_URL + "?action=list&t=" + Date.now());
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      applyOrdersSnapshot(data.orders || []);
+      setSyncStatus("cloud");
+    } catch (e) {
+      console.error("cloud refresh failed", e);
+      setSyncStatus("error");
+    }
+  }
+  return {
+    cloud: true,
+    refresh,
+    add(order)         { return post("add", order).then(refresh); },
+    update(id, fields) { return post("update", { id, fields }).then(refresh); },
+    clearAll()         { return post("clear", {}).then(refresh); },
+  };
+}
+
+function makeLocalBackend() {
+  const KEY = "cafe_orders", UP = "cafe_update";
+  const read  = () => JSON.parse(localStorage.getItem(KEY) || "[]");
+  const write = a => { localStorage.setItem(KEY, JSON.stringify(a)); localStorage.setItem(UP, Date.now()); };
+  window.addEventListener("storage", e => { if (e.key === KEY || e.key === UP) applyOrdersSnapshot(read()); });
+  return {
+    cloud: false,
+    refresh() { applyOrdersSnapshot(read()); return Promise.resolve(); },
+    add(order) {
+      const a = read();
+      order.id = "order_" + Date.now() + "_" + Math.floor(Math.random() * 1e4);
+      a.push(order); write(a); applyOrdersSnapshot(a); return Promise.resolve();
+    },
+    update(id, fields) {
+      const a = read(); const o = a.find(x => x.id === id);
+      if (o) Object.assign(o, fields);
+      write(a); applyOrdersSnapshot(a); return Promise.resolve();
+    },
+    clearAll() { localStorage.removeItem(KEY); localStorage.setItem(UP, Date.now()); applyOrdersSnapshot([]); return Promise.resolve(); }
+  };
+}
+
+const Backend = CLOUD_READY ? makeCloudBackend() : makeLocalBackend();
 
 /* ─── TAB SWITCHING ─── */
 const TAB_META = {
@@ -705,7 +807,6 @@ function toggleCart() {
 function submitOrder() {
   if (!cart.length) return;
   const order = {
-    id: `order_${Date.now()}`,
     customerNumber: custNum,
     timestamp: new Date().toISOString(),
     items: cart.map((c, i) => ({
@@ -716,7 +817,7 @@ function submitOrder() {
     total: cart.reduce((s, c) => s + c.price * c.qty, 0),
     orderStatus: "pending"
   };
-  const orders = getOrders(); orders.push(order); saveOrders(orders);
+  Backend.add(order).catch(err => { console.error(err); showToast("⚠️ Could not save order — check connection"); });
   const n = custNum; cart = []; renderCart();
   showToast(`Customer #${n} order placed! ✓`);
   setTimeout(() => {
@@ -727,7 +828,6 @@ function submitOrder() {
     const badge = document.getElementById("customerBadge");
     if (badge) badge.textContent = "No customer selected";
   }, 1600);
-  updateKNavBadge();
 }
 
 /* ══════════ KITCHEN SCREEN ══════════ */
@@ -804,18 +904,28 @@ function kMarkDone() {
     const card = document.getElementById(`kc-${k.split("::")[0]}`);
     if (card) card.classList.add("fading");
   });
-  setTimeout(() => {
-    const orders = getOrders(); let cnt = 0;
-    kSelected.forEach(k => {
-      const [oid, iid] = k.split("::");
-      const order = orders.find(o => o.id === oid); if (!order) return;
-      const item  = order.items.find(i => i.itemId === iid); if (!item) return;
-      item.status = "completed"; cnt++;
-      if (order.items.every(i => i.status === "completed")) order.orderStatus = "completed";
-      else if (order.items.some(i => i.status === "completed")) order.orderStatus = "partial";
+  // Group selected item ids by order, compute each order's new item list + status
+  const byOrder = {};
+  kSelected.forEach(k => { const [oid, iid] = k.split("::"); (byOrder[oid] = byOrder[oid] || []).push(iid); });
+  const snapshot = getOrders();
+  let cnt = 0;
+  const updates = [];
+  Object.entries(byOrder).forEach(([oid, iids]) => {
+    const order = snapshot.find(o => o.id === oid); if (!order) return;
+    const items = order.items.map(it => {
+      if (iids.includes(it.itemId) && it.status === "pending") { cnt++; return { ...it, status: "completed" }; }
+      return it;
     });
-    saveOrders(orders); kSelected.clear();
-    showToast(`${cnt} item(s) completed ✓`); renderKitchen();
+    const allDone  = items.every(i => i.status === "completed");
+    const someDone = items.some(i => i.status === "completed");
+    updates.push({ oid, items, orderStatus: allDone ? "completed" : someDone ? "partial" : "pending" });
+  });
+  kSelected.clear();
+  document.getElementById("kDoneBtn").disabled = true;
+  setTimeout(() => {
+    Promise.all(updates.map(u => Backend.update(u.oid, { items: u.items, orderStatus: u.orderStatus })))
+      .catch(err => { console.error(err); showToast("⚠️ Could not update — check connection"); });
+    showToast(`${cnt} item(s) completed ✓`);
   }, 350);
 }
 
@@ -914,10 +1024,8 @@ function hToggle(id) {
 
 function clearHistory() {
   if (!confirm("Delete all order history? This cannot be undone.")) return;
-  localStorage.removeItem("cafe_orders");
-  localStorage.setItem("cafe_update", Date.now());
   hExpanded.clear(); kSelected.clear();
-  renderHistory(); updateKNavBadge();
+  Backend.clearAll().catch(err => { console.error(err); showToast("⚠️ Could not clear — check connection"); });
 }
 
 /* ══════════ TOAST ══════════ */
@@ -927,23 +1035,23 @@ function showToast(msg) {
   setTimeout(() => el.classList.remove("show"), 2200);
 }
 
-/* ══════════ STORAGE EVENT (cross-tab) ══════════ */
-window.addEventListener("storage", e => {
-  if (e.key !== "cafe_update" && e.key !== "cafe_orders") return;
-  updateKNavBadge();
-  if (currentTab === "kitchen") renderKitchen();
-  if (currentTab === "history") renderHistory();
-});
-
 /* ══════════ INIT ══════════ */
 renderMenu();
 renderCart();
 updateKNavBadge();
-setInterval(() => {
-  updateKNavBadge();
-  if (currentTab === "kitchen") renderKitchen();
-  if (currentTab === "history") renderHistory();
-}, 5000);
+
+if (Backend.cloud) {
+  setSyncStatus("syncing");
+  Backend.refresh();
+  // Poll for changes from other devices — only while the tab is visible (saves quota)
+  setInterval(() => { if (document.visibilityState === "visible") Backend.refresh(); }, 4000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") Backend.refresh();
+  });
+} else {
+  setSyncStatus("local");
+  Backend.refresh();   // load from localStorage
+}
 </script>
 </body>
 </html>
