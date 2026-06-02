@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JMCC Cafe - 주문 히스토리</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #F5F3FF; min-height: 100vh; }
+
+    header {
+      background: #4C1D95; color: #fff;
+      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    header h1 { font-size: 1.15rem; font-weight: 700; }
+    .header-stats { display: flex; gap: 10px; }
+    .stat-pill {
+      background: rgba(255,255,255,0.2);
+      padding: 6px 14px; border-radius: 999px;
+      font-size: 0.82rem; font-weight: 700;
+    }
+    .stat-pill.green { background: #16A34A; }
+    .stat-pill.orange { background: #D97706; }
+
+    .page-content { padding: 20px; max-width: 1100px; margin: 0 auto; }
+
+    /* Summary cards */
+    .summary-row {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px; margin-bottom: 24px;
+    }
+    .summary-card {
+      background: #fff; border-radius: 14px; padding: 18px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      text-align: center;
+    }
+    .summary-label { font-size: 0.78rem; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .summary-value { font-size: 1.6rem; font-weight: 800; }
+    .summary-value.purple { color: #7C3AED; }
+    .summary-value.green  { color: #16A34A; }
+    .summary-value.orange { color: #D97706; }
+    .summary-value.blue   { color: #2563EB; }
+
+    /* Filters */
+    .filter-bar {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .filter-bar label { font-size: 0.85rem; color: #6B7280; }
+    .filter-select {
+      padding: 7px 12px; border: 2px solid #DDD6FE;
+      border-radius: 8px; font-size: 0.88rem; background: #fff;
+      color: #374151; cursor: pointer;
+    }
+    .clear-btn {
+      padding: 7px 14px; background: #EDE9FE;
+      border: none; border-radius: 8px;
+      color: #7C3AED; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; margin-left: auto;
+    }
+    .clear-btn:hover { background: #DDD6FE; }
+
+    /* Order list */
+    .order-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .order-row {
+      background: #fff; border-radius: 14px;
+      border: 2px solid #EDE9FE;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+    .order-row.completed { border-color: #BBF7D0; }
+    .order-row.partial   { border-color: #FDE68A; }
+    .order-row.pending   { border-color: #FCA5A5; }
+
+    .order-row-header {
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer; user-select: none;
+    }
+    .order-row.completed .order-row-header { background: #F0FDF4; }
+    .order-row.partial   .order-row-header { background: #FFFBEB; }
+    .order-row.pending   .order-row-header { background: #FFF1F2; }
+
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 999px; flex-shrink: 0;
+    }
+    .status-dot.completed { background: #22C55E; }
+    .status-dot.partial   { background: #F59E0B; }
+    .status-dot.pending   { background: #F87171; }
+
+    .order-row-customer {
+      font-size: 1rem; font-weight: 800; color: #1F2937;
+    }
+    .order-row-time { font-size: 0.78rem; color: #9CA3AF; }
+    .order-row-total {
+      margin-left: auto; font-size: 1rem; font-weight: 800;
+    }
+    .order-row.completed .order-row-total { color: #16A34A; }
+    .order-row.partial   .order-row-total { color: #D97706; }
+    .order-row.pending   .order-row-total { color: #DC2626; }
+
+    .status-label {
+      font-size: 0.72rem; font-weight: 700; padding: 3px 9px;
+      border-radius: 999px; white-space: nowrap;
+    }
+    .status-label.completed { background: #DCFCE7; color: #16A34A; }
+    .status-label.partial   { background: #FEF9C3; color: #B45309; }
+    .status-label.pending   { background: #FFE4E6; color: #DC2626; }
+
+    .expand-icon { color: #9CA3AF; font-size: 0.8rem; margin-left: 4px; }
+
+    .order-detail {
+      padding: 12px 16px; border-top: 1px solid #F3F4F6;
+      display: none;
+    }
+    .order-detail.open { display: block; }
+
+    .detail-table { width: 100%; border-collapse: collapse; }
+    .detail-table th {
+      text-align: left; font-size: 0.75rem; color: #9CA3AF;
+      text-transform: uppercase; padding: 4px 8px;
+      border-bottom: 1px solid #F3F4F6;
+    }
+    .detail-table td { padding: 7px 8px; font-size: 0.88rem; border-bottom: 1px solid #F9FAFB; }
+    .detail-table tr:last-child td { border-bottom: none; }
+    .td-name { font-weight: 600; color: #1F2937; }
+    .td-temp { }
+    .temp-chip {
+      font-size: 0.72rem; font-weight: 700; padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .temp-chip.ice  { background: #EFF6FF; color: #3B82F6; }
+    .temp-chip.hot  { background: #FEF2F2; color: #EF4444; }
+    .temp-chip.none { background: #F3F4F6; color: #6B7280; }
+    .td-status { }
+    .item-done    { color: #22C55E; font-size: 0.82rem; font-weight: 700; }
+    .item-pending { color: #F87171; font-size: 0.82rem; font-weight: 700; }
+    .td-subtotal { font-weight: 700; color: #4C1D95; text-align: right; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 80px 20px; color: #9CA3AF;
+    }
+    .empty-icon { font-size: 4rem; margin-bottom: 12px; }
+    .empty-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; color: #6B7280; }
+    .empty-sub { font-size: 0.9rem; }
+
+    /* Live dot */
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 999px; background: #A78BFA;
+      display: inline-block; margin-right: 6px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span>📋</span>
+    <h1>주문 히스토리</h1>
+    <span class="live-dot"></span>
+  </div>
+  <div class="header-stats">
+    <div class="stat-pill" id="totalStat">전체 0건</div>
+    <div class="stat-pill green" id="completedStat">완료 0</div>
+    <div class="stat-pill orange" id="pendingStat">대기 0</div>
+  </div>
+</header>
+
+<div class="page-content">
+
+  <!-- Summary -->
+  <div class="summary-row">
+    <div class="summary-card">
+      <div class="summary-label">총 주문</div>
+      <div class="summary-value purple" id="s-total">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">총 매출</div>
+      <div class="summary-value green" id="s-revenue">¥0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">완료 주문</div>
+      <div class="summary-value green" id="s-completed">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">대기 주문</div>
+      <div class="summary-value orange" id="s-pending">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">평균 금액</div>
+      <div class="summary-value blue" id="s-avg">¥0</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <label>상태 필터:</label>
+    <select class="filter-select" id="statusFilter" onchange="render()">
+      <option value="all">전체</option>
+      <option value="pending">대기중</option>
+      <option value="partial">일부완료</option>
+      <option value="completed">완료</option>
+    </select>
+    <label>손님 번호:</label>
+    <select class="filter-select" id="customerFilter" onchange="render()">
+      <option value="all">전체</option>
+    </select>
+    <label>정렬:</label>
+    <select class="filter-select" id="sortFilter" onchange="render()">
+      <option value="newest">최신순</option>
+      <option value="oldest">오래된순</option>
+      <option value="highest">금액높은순</option>
+    </select>
+    <button class="clear-btn" onclick="clearHistory()">🗑 기록 초기화</button>
+  </div>
+
+  <!-- Order list -->
+  <div class="order-list" id="orderList"></div>
+</div>
+
+<script>
+let expandedOrders = new Set();
+
+function getOrders() {
+  return JSON.parse(localStorage.getItem("cafe_orders") || "[]");
+}
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString("ko-KR", {
+    month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit"
+  });
+}
+
+function statusLabel(s) {
+  if (s === "completed") return ["완료", "completed"];
+  if (s === "partial")   return ["제작중", "partial"];
+  return ["대기중", "pending"];
+}
+
+function updateCustomerFilter(orders) {
+  const sel = document.getElementById("customerFilter");
+  const cur = sel.value;
+  const nums = [...new Set(orders.map(o => o.customerNumber))].sort((a,b) => a-b);
+  sel.innerHTML = `<option value="all">전체</option>` +
+    nums.map(n => `<option value="${n}" ${cur==n?"selected":""}>손님 #${n}</option>`).join("");
+}
+
+function render() {
+  let orders = getOrders();
+  if (orders.length === 0) {
+    renderEmpty();
+    updateSummary([]);
+    return;
+  }
+
+  updateCustomerFilter(orders);
+
+  // Filters
+  const sf = document.getElementById("statusFilter").value;
+  const cf = document.getElementById("customerFilter").value;
+  const sort = document.getElementById("sortFilter").value;
+
+  if (sf !== "all") orders = orders.filter(o => o.orderStatus === sf);
+  if (cf !== "all") orders = orders.filter(o => o.customerNumber == cf);
+
+  if (sort === "oldest")  orders.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+  else if (sort === "newest") orders.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+  else if (sort === "highest") orders.sort((a,b) => b.total - a.total);
+
+  updateSummary(getOrders()); // always from full set
+
+  // Header stats
+  const all = getOrders();
+  document.getElementById("totalStat").textContent = `전체 ${all.length}건`;
+  document.getElementById("completedStat").textContent = `완료 ${all.filter(o=>o.orderStatus==="completed").length}`;
+  document.getElementById("pendingStat").textContent = `대기 ${all.filter(o=>o.orderStatus==="pending").length}`;
+
+  const list = document.getElementById("orderList");
+  if (orders.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">필터 조건에 맞는 주문이 없습니다</div></div>`;
+    return;
+  }
+
+  list.innerHTML = orders.map(order => {
+    const [slabel, sclass] = statusLabel(order.orderStatus);
+    const isOpen = expandedOrders.has(order.id);
+
+    const detailRows = order.items.map(item => {
+      const tc = item.temp === "ice" ? "ice" : item.temp === "hot" ? "hot" : "none";
+      const tl = item.temp === "ice" ? "🧊 Ice" : item.temp === "hot" ? "🔥 Hot" : "−";
+      const done = item.status === "completed";
+      return `
+        <tr>
+          <td class="td-name">${item.nameKo}</td>
+          <td class="td-temp"><span class="temp-chip ${tc}">${tl}</span></td>
+          <td>${item.qty}개</td>
+          <td class="td-status">${done ? `<span class="item-done">✓ 완료</span>` : `<span class="item-pending">⏳ 대기</span>`}</td>
+          <td class="td-subtotal">¥${(item.price * item.qty).toLocaleString()}</td>
+        </tr>`;
+    }).join("");
+
+    return `
+      <div class="order-row ${sclass}" id="row-${order.id}">
+        <div class="order-row-header" onclick="toggleDetail('${order.id}')">
+          <div class="status-dot ${sclass}"></div>
+          <div>
+            <div class="order-row-customer">👤 손님 #${order.customerNumber}</div>
+            <div class="order-row-time">${formatTime(order.timestamp)}</div>
+          </div>
+          <span class="status-label ${sclass}">${slabel}</span>
+          <div class="order-row-total">¥${order.total.toLocaleString()}</div>
+          <span class="expand-icon">${isOpen ? "▲" : "▼"}</span>
+        </div>
+        <div class="order-detail ${isOpen ? "open" : ""}" id="detail-${order.id}">
+          <table class="detail-table">
+            <thead>
+              <tr>
+                <th>메뉴</th><th>온도</th><th>수량</th><th>상태</th><th style="text-align:right">금액</th>
+              </tr>
+            </thead>
+            <tbody>${detailRows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function toggleDetail(id) {
+  if (expandedOrders.has(id)) expandedOrders.delete(id);
+  else expandedOrders.add(id);
+  render();
+}
+
+function updateSummary(orders) {
+  const total = orders.length;
+  const revenue = orders.reduce((s, o) => s + o.total, 0);
+  const completed = orders.filter(o => o.orderStatus === "completed").length;
+  const pending = orders.filter(o => o.orderStatus === "pending").length;
+  const avg = total ? Math.round(revenue / total) : 0;
+
+  document.getElementById("s-total").textContent = total;
+  document.getElementById("s-revenue").textContent = `¥${revenue.toLocaleString()}`;
+  document.getElementById("s-completed").textContent = completed;
+  document.getElementById("s-pending").textContent = pending;
+  document.getElementById("s-avg").textContent = `¥${avg.toLocaleString()}`;
+}
+
+function renderEmpty() {
+  document.getElementById("orderList").innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">아직 주문 내역이 없습니다</div>
+      <div class="empty-sub">order.html에서 주문을 받으면 여기에 표시됩니다</div>
+    </div>`;
+  document.getElementById("totalStat").textContent = "전체 0건";
+  document.getElementById("completedStat").textContent = "완료 0";
+  document.getElementById("pendingStat").textContent = "대기 0";
+}
+
+function clearHistory() {
+  if (!confirm("주문 히스토리를 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) return;
+  localStorage.removeItem("cafe_orders");
+  localStorage.setItem("cafe_update", Date.now().toString());
+  expandedOrders.clear();
+  render();
+}
+
+// Real-time updates from other tabs
+window.addEventListener("storage", e => {
+  if (e.key === "cafe_update" || e.key === "cafe_orders") {
+    render();
+  }
+});
+
+render();
+setInterval(render, 5000);
+</script>
+</body>
+</html>

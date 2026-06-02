@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JMCC Cafe - 주문</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #F0F5F1; min-height: 100vh; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: #fff; border-radius: 20px;
+      padding: 36px 32px; width: 90%; max-width: 500px;
+      text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-logo { font-size: 2.5rem; margin-bottom: 4px; }
+    .modal h2 { color: #1B4332; font-size: 1.6rem; font-weight: 800; margin-bottom: 4px; }
+    .modal-subtitle { color: #6B7280; font-size: 0.95rem; margin-bottom: 28px; }
+    .number-grid {
+      display: grid; grid-template-columns: repeat(6, 1fr);
+      gap: 8px; margin-bottom: 24px;
+    }
+    .num-btn {
+      aspect-ratio: 1; border: 2px solid #E5E7EB;
+      background: #fff; border-radius: 10px;
+      font-size: 1rem; font-weight: 600; color: #374151;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .num-btn:hover { border-color: #40916C; color: #40916C; background: #F0FDF4; }
+    .num-btn.selected { background: #1B4332; border-color: #1B4332; color: #fff; }
+    .start-btn {
+      width: 100%; padding: 15px;
+      background: #1B4332; color: #fff;
+      border: none; border-radius: 12px;
+      font-size: 1.1rem; font-weight: 700; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .start-btn:hover:not(:disabled) { background: #2D6A4F; }
+    .start-btn:disabled { background: #D1D5DB; color: #9CA3AF; cursor: not-allowed; }
+
+    /* ── Header ── */
+    header {
+      background: #1B4332; color: #fff;
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-logo { font-size: 1.4rem; }
+    header h1 { font-size: 1.15rem; font-weight: 700; }
+    .customer-badge {
+      background: #40916C; padding: 7px 16px;
+      border-radius: 999px; font-size: 0.9rem; font-weight: 700;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .change-btn {
+      background: rgba(255,255,255,0.2); border: none;
+      color: #fff; font-size: 0.75rem; padding: 4px 8px;
+      border-radius: 6px; cursor: pointer; margin-left: 6px;
+    }
+    .change-btn:hover { background: rgba(255,255,255,0.3); }
+
+    /* ── Menu ── */
+    .menu-container { padding: 16px 16px 220px; max-width: 960px; margin: 0 auto; }
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      margin: 24px 0 12px;
+    }
+    .section-icon { font-size: 1.3rem; }
+    .section-title {
+      font-size: 1rem; font-weight: 800; color: #1B4332;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .section-line { flex: 1; height: 2px; background: #D1FAE5; }
+    .menu-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 12px;
+    }
+    .menu-card {
+      background: #fff; border-radius: 14px; padding: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      border: 2px solid transparent; transition: border-color 0.2s;
+    }
+    .menu-card:hover { border-color: #A7F3D0; }
+    .card-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .item-name { font-size: 1rem; font-weight: 700; color: #111827; }
+    .item-name-ko { font-size: 0.78rem; color: #9CA3AF; margin-top: 2px; }
+    .item-price { font-size: 1.1rem; font-weight: 800; color: #1B4332; white-space: nowrap; }
+
+    .temp-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .temp-btn {
+      flex: 1; padding: 7px 0;
+      border: 2px solid #E5E7EB; border-radius: 8px;
+      font-size: 0.85rem; font-weight: 700; cursor: pointer;
+      transition: all 0.15s; background: #fff;
+    }
+    .temp-btn.ice { color: #3B82F6; }
+    .temp-btn.ice.active { background: #EFF6FF; border-color: #3B82F6; }
+    .temp-btn.hot { color: #EF4444; }
+    .temp-btn.hot.active { background: #FEF2F2; border-color: #EF4444; }
+
+    .bottom-row { display: flex; align-items: center; gap: 8px; }
+    .qty-wrap { display: flex; align-items: center; gap: 6px; }
+    .qty-btn {
+      width: 30px; height: 30px;
+      background: #F3F4F6; border: none; border-radius: 8px;
+      font-size: 1.1rem; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .qty-btn:hover { background: #D1FAE5; color: #1B4332; }
+    .qty-num { font-size: 1rem; font-weight: 700; min-width: 22px; text-align: center; }
+    .add-btn {
+      margin-left: auto; padding: 7px 18px;
+      background: #1B4332; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 0.88rem; font-weight: 700; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .add-btn:hover { background: #2D6A4F; }
+
+    /* ── Cart Panel ── */
+    .cart-panel {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 3px solid #1B4332;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+      z-index: 100; max-height: 60vh;
+      display: flex; flex-direction: column;
+    }
+    .cart-header {
+      padding: 12px 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      background: #F0FDF4; border-bottom: 1px solid #D1FAE5;
+    }
+    .cart-header-left { display: flex; align-items: center; gap: 8px; }
+    .cart-title { font-size: 1rem; font-weight: 700; color: #1B4332; }
+    .cart-count-badge {
+      background: #1B4332; color: #fff;
+      border-radius: 999px; padding: 2px 8px; font-size: 0.78rem; font-weight: 700;
+    }
+    .cart-body { overflow-y: auto; padding: 0 16px; }
+    .cart-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid #F3F4F6;
+      gap: 8px;
+    }
+    .cart-item-info { flex: 1; }
+    .cart-item-name { font-size: 0.9rem; font-weight: 600; color: #111827; }
+    .cart-item-sub { font-size: 0.78rem; color: #9CA3AF; margin-top: 1px; }
+    .cart-item-price { font-size: 0.9rem; font-weight: 700; color: #1B4332; white-space: nowrap; }
+    .cart-remove {
+      background: none; border: none; color: #D1D5DB;
+      font-size: 1rem; cursor: pointer; padding: 2px 4px;
+    }
+    .cart-remove:hover { color: #EF4444; }
+    .cart-footer {
+      padding: 12px 16px;
+      border-top: 2px solid #D1FAE5;
+      display: flex; align-items: center; justify-content: space-between;
+      background: #fff;
+    }
+    .cart-total-label { font-size: 0.85rem; color: #6B7280; }
+    .cart-total-amount { font-size: 1.3rem; font-weight: 800; color: #1B4332; }
+    .order-submit-btn {
+      padding: 12px 28px;
+      background: #1B4332; color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 1rem; font-weight: 800; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .order-submit-btn:hover:not(:disabled) { background: #2D6A4F; }
+    .order-submit-btn:disabled { background: #D1D5DB; color: #9CA3AF; cursor: not-allowed; }
+    .cart-empty {
+      text-align: center; padding: 20px; color: #9CA3AF; font-size: 0.9rem;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; top: 72px; left: 50%; transform: translateX(-50%) translateY(-10px);
+      background: #1B4332; color: #fff;
+      padding: 10px 20px; border-radius: 999px;
+      font-size: 0.9rem; font-weight: 600; z-index: 9999;
+      opacity: 0; transition: all 0.3s; white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- ── 번호 선택 모달 ── -->
+<div class="modal-overlay" id="numberModal">
+  <div class="modal">
+    <div class="modal-logo">☕</div>
+    <h2>JMCC Cafe</h2>
+    <p class="modal-subtitle">손님 번호를 선택해주세요</p>
+    <div class="number-grid" id="numberGrid"></div>
+    <button class="start-btn" id="startBtn" disabled onclick="startOrder()">주문 시작하기</button>
+  </div>
+</div>
+
+<!-- ── 헤더 ── -->
+<header>
+  <div class="header-left">
+    <span class="header-logo">☕</span>
+    <h1>JMCC Cafe</h1>
+  </div>
+  <div class="customer-badge" id="customerBadge">
+    손님 번호 선택중
+  </div>
+</header>
+
+<!-- ── 메뉴 ── -->
+<div class="menu-container" id="menuContainer"></div>
+
+<!-- ── 장바구니 패널 ── -->
+<div class="cart-panel" id="cartPanel">
+  <div class="cart-header" onclick="toggleCart()">
+    <div class="cart-header-left">
+      <span>🛒</span>
+      <span class="cart-title">주문 목록</span>
+      <span class="cart-count-badge" id="cartCountBadge">0</span>
+    </div>
+    <span id="cartArrow">▲</span>
+  </div>
+  <div class="cart-body" id="cartBody"></div>
+  <div class="cart-footer">
+    <div>
+      <div class="cart-total-label">합계</div>
+      <div class="cart-total-amount" id="cartTotalAmount">¥0</div>
+    </div>
+    <button class="order-submit-btn" id="orderBtn" disabled onclick="submitOrder()">주문하기</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const MENU = [
+  { id:1,  name:"Americano",         nameKo:"아메리카노",        price:150,  hasTemp:true,  cat:"coffee"  },
+  { id:2,  name:"Latte",             nameKo:"라떼",              price:200,  hasTemp:true,  cat:"coffee"  },
+  { id:3,  name:"Caramel macchiato", nameKo:"카라멜마키아토",    price:250,  hasTemp:true,  cat:"coffee"  },
+  { id:4,  name:"Matcha Latte",      nameKo:"말차라떼",          price:250,  hasTemp:true,  cat:"coffee"  },
+  { id:5,  name:"Vanilla latte",     nameKo:"바닐라라떼",        price:250,  hasTemp:true,  cat:"coffee"  },
+  { id:6,  name:"Milk cocoa",        nameKo:"밀크코코아",        price:200,  hasTemp:true,  cat:"coffee"  },
+  { id:7,  name:"Mango juice",       nameKo:"망고주스",          price:200,  hasTemp:false, cat:"juice"   },
+  { id:8,  name:"Grapefruit juice",  nameKo:"그레이프후르츠주스", price:200, hasTemp:false, cat:"juice"   },
+  { id:9,  name:"Melon soda",        nameKo:"메론소다",          price:200,  hasTemp:false, cat:"juice"   },
+  { id:10, name:"Green tea",         nameKo:"그린티",            price:130,  hasTemp:true,  cat:"extras"  },
+  { id:11, name:"Chamomile tea",     nameKo:"캐모마일티",        price:130,  hasTemp:true,  cat:"extras"  },
+  { id:12, name:"Earl Grey tea",     nameKo:"얼그레이티",        price:130,  hasTemp:true,  cat:"extras"  },
+  { id:13, name:"Soy Latte",         nameKo:"두유라떼",          price:200,  hasTemp:true,  cat:"extras"  },
+  { id:14, name:"短期宣教師応援セット", nameKo:"단기선교사 응원세트", price:3000, hasTemp:false, cat:"special" },
+];
+
+const CATS = {
+  coffee:  { icon:"☕", label:"Coffee" },
+  juice:   { icon:"🧃", label:"Juice & Soda" },
+  extras:  { icon:"🍵", label:"Extras" },
+  special: { icon:"⭐", label:"Special" },
+};
+
+let customerNum = null;
+let cart = [];
+let qtyMap = {};
+let tempMap = {};
+let cartOpen = true;
+
+MENU.forEach(m => {
+  qtyMap[m.id] = 1;
+  if (m.hasTemp) tempMap[m.id] = "ice";
+});
+
+/* ─ Number grid ─ */
+const grid = document.getElementById("numberGrid");
+for (let i = 1; i <= 30; i++) {
+  const b = document.createElement("button");
+  b.className = "num-btn";
+  b.textContent = i;
+  b.onclick = () => pickNum(i, b);
+  grid.appendChild(b);
+}
+
+function pickNum(n, btn) {
+  customerNum = n;
+  document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  document.getElementById("startBtn").disabled = false;
+}
+
+function startOrder() {
+  document.getElementById("numberModal").style.display = "none";
+  document.getElementById("customerBadge").innerHTML =
+    `👤 손님 #${customerNum} <button class="change-btn" onclick="changeCustomer()">변경</button>`;
+}
+
+function changeCustomer() {
+  document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("selected"));
+  document.getElementById("startBtn").disabled = true;
+  customerNum = null;
+  document.getElementById("numberModal").style.display = "flex";
+}
+
+/* ─ Render menu ─ */
+function renderMenu() {
+  const container = document.getElementById("menuContainer");
+  container.innerHTML = "";
+
+  const grouped = {};
+  MENU.forEach(m => { (grouped[m.cat] = grouped[m.cat] || []).push(m); });
+
+  Object.entries(grouped).forEach(([cat, items]) => {
+    const { icon, label } = CATS[cat];
+
+    const sec = document.createElement("div");
+    sec.innerHTML = `
+      <div class="section-header">
+        <span class="section-icon">${icon}</span>
+        <span class="section-title">${label}</span>
+        <div class="section-line"></div>
+      </div>`;
+
+    const g = document.createElement("div");
+    g.className = "menu-grid";
+
+    items.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "menu-card";
+      card.id = `card-${item.id}`;
+
+      const tempHTML = item.hasTemp ? `
+        <div class="temp-row">
+          <button class="temp-btn ice active" id="ice-${item.id}" onclick="setTemp(${item.id},'ice')">🧊 Ice</button>
+          <button class="temp-btn hot"        id="hot-${item.id}" onclick="setTemp(${item.id},'hot')">🔥 Hot</button>
+        </div>` : "";
+
+      card.innerHTML = `
+        <div class="card-top">
+          <div>
+            <div class="item-name">${item.name}</div>
+            <div class="item-name-ko">${item.nameKo}</div>
+          </div>
+          <div class="item-price">¥${item.price.toLocaleString()}</div>
+        </div>
+        ${tempHTML}
+        <div class="bottom-row">
+          <div class="qty-wrap">
+            <button class="qty-btn" onclick="changeQty(${item.id},-1)">−</button>
+            <span class="qty-num" id="qty-${item.id}">1</span>
+            <button class="qty-btn" onclick="changeQty(${item.id},1)">+</button>
+          </div>
+          <button class="add-btn" onclick="addItem(${item.id})">담기 +</button>
+        </div>`;
+      g.appendChild(card);
+    });
+
+    sec.appendChild(g);
+    container.appendChild(sec);
+  });
+}
+
+function setTemp(id, temp) {
+  tempMap[id] = temp;
+  const iceBtn = document.getElementById(`ice-${id}`);
+  const hotBtn = document.getElementById(`hot-${id}`);
+  iceBtn.classList.toggle("active", temp === "ice");
+  hotBtn.classList.toggle("active", temp === "hot");
+}
+
+function changeQty(id, delta) {
+  qtyMap[id] = Math.max(1, qtyMap[id] + delta);
+  document.getElementById(`qty-${id}`).textContent = qtyMap[id];
+}
+
+function addItem(id) {
+  const item = MENU.find(m => m.id === id);
+  const temp = item.hasTemp ? tempMap[id] : null;
+  const qty  = qtyMap[id];
+
+  const existing = cart.find(c => c.id === id && c.temp === temp);
+  if (existing) { existing.qty += qty; }
+  else { cart.push({ id, name: item.name, nameKo: item.nameKo, price: item.price, temp, qty }); }
+
+  qtyMap[id] = 1;
+  document.getElementById(`qty-${id}`).textContent = 1;
+
+  renderCart();
+  toast(`${item.nameKo} 담겼습니다 ✓`);
+}
+
+function removeItem(idx) {
+  cart.splice(idx, 1);
+  renderCart();
+}
+
+/* ─ Cart ─ */
+function renderCart() {
+  const totalQty   = cart.reduce((s, c) => s + c.qty, 0);
+  const totalPrice = cart.reduce((s, c) => s + c.price * c.qty, 0);
+
+  document.getElementById("cartCountBadge").textContent = totalQty;
+  document.getElementById("cartTotalAmount").textContent = `¥${totalPrice.toLocaleString()}`;
+  document.getElementById("orderBtn").disabled = cart.length === 0;
+
+  const body = document.getElementById("cartBody");
+  if (!cartOpen) { body.innerHTML = ""; return; }
+
+  if (cart.length === 0) {
+    body.innerHTML = `<div class="cart-empty">아직 담은 메뉴가 없습니다</div>`;
+    return;
+  }
+
+  body.innerHTML = cart.map((c, i) => {
+    const tempLabel = c.temp === "ice" ? "🧊 Ice" : c.temp === "hot" ? "🔥 Hot" : "";
+    return `
+      <div class="cart-item">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${c.nameKo}</div>
+          <div class="cart-item-sub">${tempLabel}${tempLabel ? " · " : ""}수량 ${c.qty}개</div>
+        </div>
+        <div class="cart-item-price">¥${(c.price * c.qty).toLocaleString()}</div>
+        <button class="cart-remove" onclick="removeItem(${i})">✕</button>
+      </div>`;
+  }).join("");
+}
+
+function toggleCart() {
+  cartOpen = !cartOpen;
+  document.getElementById("cartArrow").textContent = cartOpen ? "▲" : "▼";
+  renderCart();
+}
+
+/* ─ Submit ─ */
+function submitOrder() {
+  if (!cart.length) return;
+
+  const now = new Date();
+  const order = {
+    id: `order_${Date.now()}`,
+    customerNumber: customerNum,
+    timestamp: now.toISOString(),
+    items: cart.map((c, i) => ({
+      itemId: `${Date.now()}_${i}`,
+      name: c.name,
+      nameKo: c.nameKo,
+      price: c.price,
+      temp: c.temp,
+      qty: c.qty,
+      status: "pending"
+    })),
+    total: cart.reduce((s, c) => s + c.price * c.qty, 0),
+    orderStatus: "pending"
+  };
+
+  const orders = JSON.parse(localStorage.getItem("cafe_orders") || "[]");
+  orders.push(order);
+  localStorage.setItem("cafe_orders", JSON.stringify(orders));
+  localStorage.setItem("cafe_update", Date.now().toString());
+
+  const num = customerNum;
+  cart = [];
+  renderCart();
+  toast(`손님 #${num} 주문 접수 완료! ✓`);
+
+  setTimeout(() => {
+    customerNum = null;
+    document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("selected"));
+    document.getElementById("startBtn").disabled = true;
+    document.getElementById("customerBadge").innerHTML = "손님 번호 선택중";
+    document.getElementById("numberModal").style.display = "flex";
+  }, 1600);
+}
+
+/* ─ Toast ─ */
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+renderMenu();
+renderCart();
+</script>
+</body>
+</html>
