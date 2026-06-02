@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -15,7 +15,7 @@
 
     /* ===== HEADER ===== */
     .app-header {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 300;
       height: 56px; display: flex; align-items: center; justify-content: space-between;
       padding: 0 16px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.18);
@@ -41,7 +41,7 @@
 
     /* ===== BOTTOM NAV ===== */
     .bottom-nav {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 300;
       height: 62px; background: #fff;
       display: flex; border-top: 1px solid #E5E7EB;
       box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
@@ -50,7 +50,7 @@
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 3px;
       border: none; background: transparent; cursor: pointer;
-      transition: background 0.15s;
+      transition: background 0.15s; position: relative;
     }
     .nav-btn:active { background: #F3F4F6; }
     .nav-icon { font-size: 1.3rem; transition: transform 0.2s; }
@@ -74,17 +74,19 @@
     ══════════════════════════════════════════ */
     #screen-order { background: #F0F5F1; }
 
-    /* Number modal */
+    /* Number overlay — scoped between header and bottom nav so tabs stay clickable */
     .num-modal {
-      position: fixed; inset: 0; z-index: 500;
-      background: rgba(0,0,0,0.65);
+      position: fixed; top: 56px; bottom: 62px; left: 0; right: 0; z-index: 160;
+      background: rgba(240,245,241,0.97);
       display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(3px);
     }
     .num-modal.hidden { display: none; }
     .num-modal-box {
       background: #fff; border-radius: 20px;
       padding: 32px 24px; width: 92%; max-width: 460px;
-      text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+      border: 1px solid #E5E7EB;
     }
     .num-modal-box .logo-icon { font-size: 2.2rem; margin-bottom: 6px; }
     .num-modal-box h2 { font-size: 1.45rem; font-weight: 800; color: #1B4332; margin-bottom: 4px; }
@@ -110,7 +112,7 @@
     .start-btn:disabled { background: #D1D5DB; color: #9CA3AF; cursor: not-allowed; }
 
     /* Menu */
-    .menu-wrap { padding: 12px 14px 240px; max-width: 920px; margin: 0 auto; }
+    .menu-wrap { padding: 12px 14px 240px; max-width: 920px; margin: 0 auto; padding-top: 68px; }
     .sec-head {
       display: flex; align-items: center; gap: 8px;
       margin: 20px 0 10px;
@@ -136,8 +138,7 @@
       display: flex; justify-content: space-between; align-items: flex-start;
       margin-bottom: 10px;
     }
-    .item-en  { font-size: 0.95rem; font-weight: 700; color: #111827; }
-    .item-ko  { font-size: 0.75rem; color: #9CA3AF; margin-top: 2px; }
+    .item-en  { font-size: 0.98rem; font-weight: 700; color: #111827; }
     .item-prc { font-size: 1rem; font-weight: 800; color: #1B4332; white-space: nowrap; }
     .temp-row { display: flex; gap: 6px; margin-bottom: 10px; }
     .temp-btn {
@@ -408,21 +409,21 @@
     <span class="live-dot" id="liveDot" style="display:none"></span>
   </div>
   <div class="header-right" id="headerRight">
-    <span class="header-badge" id="customerBadge">손님 번호 선택중</span>
+    <span class="header-badge" id="customerBadge">No customer selected</span>
   </div>
 </header>
 
 <!-- ══════════════ ORDER SCREEN ══════════════ -->
 <div id="screen-order" class="screen active">
 
-  <!-- Number modal -->
+  <!-- Number overlay -->
   <div class="num-modal" id="numModal">
     <div class="num-modal-box">
       <div class="logo-icon">☕</div>
       <h2>JMCC Cafe</h2>
-      <p>손님 번호를 선택해주세요</p>
+      <p>Please select a customer number</p>
       <div class="num-grid" id="numGrid"></div>
-      <button class="start-btn" id="startBtn" disabled onclick="startOrder()">주문 시작하기</button>
+      <button class="start-btn" id="startBtn" disabled onclick="startOrder()">Start Order</button>
     </div>
   </div>
 
@@ -433,7 +434,7 @@
     <div class="cart-head" onclick="toggleCart()">
       <div class="cart-head-l">
         <span>🛒</span>
-        <span class="cart-head-title">주문 목록</span>
+        <span class="cart-head-title">Order List</span>
         <span class="cart-cnt" id="cartCnt">0</span>
       </div>
       <span id="cartArrow">▲</span>
@@ -441,10 +442,10 @@
     <div class="cart-body" id="cartBody"></div>
     <div class="cart-foot">
       <div>
-        <div class="cart-total-lbl">합계</div>
+        <div class="cart-total-lbl">Total</div>
         <div class="cart-total-amt" id="cartAmt">¥0</div>
       </div>
-      <button class="order-btn" id="orderBtn" disabled onclick="submitOrder()">주문하기</button>
+      <button class="order-btn" id="orderBtn" disabled onclick="submitOrder()">Place Order</button>
     </div>
   </div>
 </div>
@@ -454,9 +455,9 @@
   <div class="page-wrap">
     <div class="kitchen-wrap">
       <div class="k-action-bar">
-        <h2 id="kTitle">제작 대기 목록</h2>
-        <button class="k-sel-all-btn" onclick="kSelectAll()">전체 선택</button>
-        <button class="k-done-btn" id="kDoneBtn" disabled onclick="kMarkDone()">✓ 제작완료</button>
+        <h2 id="kTitle">Pending Orders</h2>
+        <button class="k-sel-all-btn" onclick="kSelectAll()">Select All</button>
+        <button class="k-done-btn" id="kDoneBtn" disabled onclick="kMarkDone()">✓ Mark Complete</button>
       </div>
       <div class="k-grid" id="kGrid"></div>
     </div>
@@ -469,24 +470,24 @@
     <div class="hist-wrap">
       <div class="summary-row" id="summaryRow"></div>
       <div class="filter-bar">
-        <span class="filt-lbl">상태:</span>
+        <span class="filt-lbl">Status:</span>
         <select class="filt-sel" id="fStatus" onchange="renderHistory()">
-          <option value="all">전체</option>
-          <option value="pending">대기중</option>
-          <option value="partial">제작중</option>
-          <option value="completed">완료</option>
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="partial">In Progress</option>
+          <option value="completed">Completed</option>
         </select>
-        <span class="filt-lbl">손님:</span>
+        <span class="filt-lbl">Customer:</span>
         <select class="filt-sel" id="fCust" onchange="renderHistory()">
-          <option value="all">전체</option>
+          <option value="all">All</option>
         </select>
-        <span class="filt-lbl">정렬:</span>
+        <span class="filt-lbl">Sort:</span>
         <select class="filt-sel" id="fSort" onchange="renderHistory()">
-          <option value="newest">최신순</option>
-          <option value="oldest">오래된순</option>
-          <option value="highest">금액높은순</option>
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="highest">Highest amount</option>
         </select>
-        <button class="clear-hist-btn" onclick="clearHistory()">🗑 초기화</button>
+        <button class="clear-hist-btn" onclick="clearHistory()">🗑 Clear All</button>
       </div>
       <div class="order-list" id="orderList"></div>
     </div>
@@ -497,16 +498,16 @@
 <nav class="bottom-nav">
   <button class="nav-btn tab-order active" data-tab="order" onclick="switchTab('order')">
     <span class="nav-icon">📱</span>
-    <span class="nav-label">주문</span>
+    <span class="nav-label">Order</span>
   </button>
-  <button class="nav-btn tab-kitchen" data-tab="kitchen" onclick="switchTab('kitchen')" style="position:relative">
+  <button class="nav-btn tab-kitchen" data-tab="kitchen" onclick="switchTab('kitchen')">
     <span class="nav-icon">🍳</span>
-    <span class="nav-label">주방</span>
+    <span class="nav-label">Kitchen</span>
     <span class="nav-badge" id="kNavBadge" style="display:none">0</span>
   </button>
   <button class="nav-btn tab-history" data-tab="history" onclick="switchTab('history')">
     <span class="nav-icon">📋</span>
-    <span class="nav-label">내역</span>
+    <span class="nav-label">History</span>
   </button>
 </nav>
 
@@ -516,20 +517,20 @@
 <script>
 /* ─── DATA ─── */
 const MENU = [
-  { id:1,  name:"Americano",           nameKo:"아메리카노",         price:150,  hasTemp:true,  cat:"coffee"  },
-  { id:2,  name:"Latte",               nameKo:"라떼",               price:200,  hasTemp:true,  cat:"coffee"  },
-  { id:3,  name:"Caramel macchiato",   nameKo:"카라멜마키아토",     price:250,  hasTemp:true,  cat:"coffee"  },
-  { id:4,  name:"Matcha Latte",        nameKo:"말차라떼",           price:250,  hasTemp:true,  cat:"coffee"  },
-  { id:5,  name:"Vanilla latte",       nameKo:"바닐라라떼",         price:250,  hasTemp:true,  cat:"coffee"  },
-  { id:6,  name:"Milk cocoa",          nameKo:"밀크코코아",         price:200,  hasTemp:true,  cat:"coffee"  },
-  { id:7,  name:"Mango juice",         nameKo:"망고주스",           price:200,  hasTemp:false, cat:"juice"   },
-  { id:8,  name:"Grapefruit juice",    nameKo:"그레이프후르츠주스", price:200,  hasTemp:false, cat:"juice"   },
-  { id:9,  name:"Melon soda",          nameKo:"메론소다",           price:200,  hasTemp:false, cat:"juice"   },
-  { id:10, name:"Green tea",           nameKo:"그린티",             price:130,  hasTemp:true,  cat:"extras"  },
-  { id:11, name:"Chamomile tea",       nameKo:"캐모마일티",         price:130,  hasTemp:true,  cat:"extras"  },
-  { id:12, name:"Earl Grey tea",       nameKo:"얼그레이티",         price:130,  hasTemp:true,  cat:"extras"  },
-  { id:13, name:"Soy Latte",           nameKo:"두유라떼",           price:200,  hasTemp:true,  cat:"extras"  },
-  { id:14, name:"短期宣教師応援セット", nameKo:"단기선교사 응원세트", price:3000, hasTemp:false, cat:"special" },
+  { id:1,  name:"Americano",              price:150,  hasTemp:true,  cat:"coffee"  },
+  { id:2,  name:"Latte",                  price:200,  hasTemp:true,  cat:"coffee"  },
+  { id:3,  name:"Caramel Macchiato",      price:250,  hasTemp:true,  cat:"coffee"  },
+  { id:4,  name:"Matcha Latte",           price:250,  hasTemp:true,  cat:"coffee"  },
+  { id:5,  name:"Vanilla Latte",          price:250,  hasTemp:true,  cat:"coffee"  },
+  { id:6,  name:"Milk Cocoa",             price:200,  hasTemp:true,  cat:"coffee"  },
+  { id:7,  name:"Mango Juice",            price:200,  hasTemp:false, cat:"juice"   },
+  { id:8,  name:"Grapefruit Juice",       price:200,  hasTemp:false, cat:"juice"   },
+  { id:9,  name:"Melon Soda",             price:200,  hasTemp:false, cat:"juice"   },
+  { id:10, name:"Green Tea",              price:130,  hasTemp:true,  cat:"extras"  },
+  { id:11, name:"Chamomile Tea",          price:130,  hasTemp:true,  cat:"extras"  },
+  { id:12, name:"Earl Grey Tea",          price:130,  hasTemp:true,  cat:"extras"  },
+  { id:13, name:"Soy Latte",              price:200,  hasTemp:true,  cat:"extras"  },
+  { id:14, name:"Missionary Support Set", price:3000, hasTemp:false, cat:"special" },
 ];
 const CATS = {
   coffee:  { icon:"☕", label:"Coffee" },
@@ -550,14 +551,14 @@ let hExpanded  = new Set();
 MENU.forEach(m => { qtyMap[m.id] = 1; if (m.hasTemp) tempMap[m.id] = "ice"; });
 
 /* ─── STORAGE HELPERS ─── */
-function getOrders()       { return JSON.parse(localStorage.getItem("cafe_orders") || "[]"); }
-function saveOrders(o)     { localStorage.setItem("cafe_orders", JSON.stringify(o)); localStorage.setItem("cafe_update", Date.now()); }
+function getOrders()   { return JSON.parse(localStorage.getItem("cafe_orders") || "[]"); }
+function saveOrders(o) { localStorage.setItem("cafe_orders", JSON.stringify(o)); localStorage.setItem("cafe_update", Date.now()); }
 
 /* ─── TAB SWITCHING ─── */
 const TAB_META = {
-  order:   { icon:"☕", title:"JMCC Cafe",   hColor:"tab-order",   live:false },
-  kitchen: { icon:"🍳", title:"주방 관리",   hColor:"tab-kitchen", live:true  },
-  history: { icon:"📋", title:"주문 내역",   hColor:"tab-history", live:true  },
+  order:   { icon:"☕", title:"JMCC Cafe",      hColor:"tab-order",   live:false },
+  kitchen: { icon:"🍳", title:"Kitchen",        hColor:"tab-kitchen", live:true  },
+  history: { icon:"📋", title:"Order History",  hColor:"tab-history", live:true  },
 };
 
 function switchTab(tab) {
@@ -576,11 +577,11 @@ function switchTab(tab) {
   document.getElementById("cartPanel").classList.toggle("screen-hidden", tab !== "order");
   const cr = document.getElementById("headerRight");
   if (tab === "order") {
-    cr.innerHTML = `<span class="header-badge" id="customerBadge">${custNum ? `👤 손님 #${custNum}` : "손님 번호 선택중"}</span>`;
+    cr.innerHTML = `<span class="header-badge" id="customerBadge">${custNum ? `👤 Customer #${custNum}` : "No customer selected"}</span>`;
   } else if (tab === "kitchen") {
-    cr.innerHTML = `<span class="header-badge" id="kHeaderBadge">대기 0건</span>`;
+    cr.innerHTML = `<span class="header-badge" id="kHeaderBadge">Pending: 0</span>`;
   } else {
-    cr.innerHTML = `<span class="header-badge" id="hHeaderBadge">전체 0건</span>`;
+    cr.innerHTML = `<span class="header-badge" id="hHeaderBadge">Total: 0</span>`;
   }
   if (tab === "kitchen") renderKitchen();
   if (tab === "history") renderHistory();
@@ -606,7 +607,7 @@ function pickNum(n, btn) {
 function startOrder() {
   document.getElementById("numModal").classList.add("hidden");
   const badge = document.getElementById("customerBadge");
-  if (badge) badge.innerHTML = `👤 손님 #${custNum}`;
+  if (badge) badge.innerHTML = `👤 Customer #${custNum}`;
 }
 
 /* Render menu */
@@ -631,7 +632,7 @@ function renderMenu() {
         </div>` : "";
       card.innerHTML = `
         <div class="card-top">
-          <div><div class="item-en">${item.name}</div><div class="item-ko">${item.nameKo}</div></div>
+          <div><div class="item-en">${item.name}</div></div>
           <div class="item-prc">¥${item.price.toLocaleString()}</div>
         </div>
         ${tempHTML}
@@ -641,7 +642,7 @@ function renderMenu() {
             <span class="qty-num" id="qn-${item.id}">1</span>
             <button class="qty-btn" onclick="chQty(${item.id},1)">+</button>
           </div>
-          <button class="add-btn" onclick="addItem(${item.id})">담기 +</button>
+          <button class="add-btn" onclick="addItem(${item.id})">Add +</button>
         </div>`;
       grid.appendChild(card);
     });
@@ -661,13 +662,14 @@ function chQty(id, d) {
 }
 
 function addItem(id) {
+  if (!custNum) { showToast("Please select a customer number first"); return; }
   const item = MENU.find(m => m.id === id);
   const temp = item.hasTemp ? tempMap[id] : null;
   const qty  = qtyMap[id];
   const ex   = cart.find(c => c.id === id && c.temp === temp);
-  if (ex) ex.qty += qty; else cart.push({ id, name:item.name, nameKo:item.nameKo, price:item.price, temp, qty });
+  if (ex) ex.qty += qty; else cart.push({ id, name:item.name, price:item.price, temp, qty });
   qtyMap[id] = 1; document.getElementById(`qn-${id}`).textContent = 1;
-  renderCart(); showToast(`${item.nameKo} 담겼습니다 ✓`);
+  renderCart(); showToast(`${item.name} added ✓`);
 }
 
 function removeCartItem(i) { cart.splice(i, 1); renderCart(); }
@@ -681,11 +683,11 @@ function renderCart() {
   const body = document.getElementById("cartBody");
   if (!cartOpen) { body.innerHTML = ""; return; }
   body.innerHTML = cart.length === 0
-    ? `<div class="cart-empty">아직 담은 메뉴가 없습니다</div>`
+    ? `<div class="cart-empty">No items added yet</div>`
     : cart.map((c, i) => {
         const tl = c.temp === "ice" ? "🧊 Ice" : c.temp === "hot" ? "🔥 Hot" : "";
         return `<div class="cart-item">
-          <div><div class="cart-item-name">${c.nameKo}</div><div class="cart-item-sub">${tl}${tl?" · ":""}${c.qty}개</div></div>
+          <div><div class="cart-item-name">${c.name}</div><div class="cart-item-sub">${tl}${tl?" · ":""}Qty ${c.qty}</div></div>
           <div style="display:flex;align-items:center;gap:6px">
             <span class="cart-item-price">¥${(c.price*c.qty).toLocaleString()}</span>
             <button class="cart-del" onclick="removeCartItem(${i})">✕</button>
@@ -708,7 +710,7 @@ function submitOrder() {
     timestamp: new Date().toISOString(),
     items: cart.map((c, i) => ({
       itemId: `${Date.now()}_${i}`,
-      name: c.name, nameKo: c.nameKo, price: c.price,
+      name: c.name, price: c.price,
       temp: c.temp, qty: c.qty, status: "pending"
     })),
     total: cart.reduce((s, c) => s + c.price * c.qty, 0),
@@ -716,14 +718,14 @@ function submitOrder() {
   };
   const orders = getOrders(); orders.push(order); saveOrders(orders);
   const n = custNum; cart = []; renderCart();
-  showToast(`손님 #${n} 주문 접수 완료! ✓`);
+  showToast(`Customer #${n} order placed! ✓`);
   setTimeout(() => {
     custNum = null;
     document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("sel"));
     document.getElementById("startBtn").disabled = true;
     document.getElementById("numModal").classList.remove("hidden");
     const badge = document.getElementById("customerBadge");
-    if (badge) badge.textContent = "손님 번호 선택중";
+    if (badge) badge.textContent = "No customer selected";
   }, 1600);
   updateKNavBadge();
 }
@@ -739,13 +741,13 @@ function renderKitchen() {
   const pending = getPendingItems();
   const grid    = document.getElementById("kGrid");
   const badge   = document.getElementById("kHeaderBadge");
-  if (badge) badge.textContent = `대기 ${pending.length}건`;
-  document.getElementById("kTitle").textContent = `제작 대기 목록 (${pending.length}건)`;
+  if (badge) badge.textContent = `Pending: ${pending.length}`;
+  document.getElementById("kTitle").textContent = `Pending Orders (${pending.length})`;
   document.getElementById("kDoneBtn").disabled = kSelected.size === 0;
   updateKNavBadge();
 
   if (!pending.length) {
-    grid.innerHTML = `<div class="k-empty"><div class="k-empty-icon">✅</div><div class="k-empty-title">모든 주문 완료!</div><div>새 주문을 기다리는 중</div></div>`;
+    grid.innerHTML = `<div class="k-empty"><div class="k-empty-icon">✅</div><div class="k-empty-title">All orders completed!</div><div>Waiting for new orders</div></div>`;
     return;
   }
   const byOrder = {};
@@ -760,14 +762,14 @@ function renderKitchen() {
       const tl = item.temp === "ice" ? "🧊 Ice" : item.temp === "hot" ? "🔥 Hot" : "−";
       return `<div class="k-item-row">
         <span class="k-temp-tag ${tc}">${tl}</span>
-        <span class="k-item-name">${item.nameKo}</span>
+        <span class="k-item-name">${item.name}</span>
         <span class="k-item-qty">×${item.qty}</span>
       </div>`;
     }).join("");
-    const t = new Date(order.timestamp).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});
+    const t = new Date(order.timestamp).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
     return `<div class="k-card ${allSel?"sel":""}" id="kc-${order.id}" onclick="kToggle('${order.id}')">
       <div class="k-card-head">
-        <div><div class="k-cust">👤 손님 #${order.customerNumber}</div></div>
+        <div><div class="k-cust">👤 Customer #${order.customerNumber}</div></div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="k-time">${t}</span>
           <div class="k-check">${allSel?"✓":""}</div>
@@ -790,7 +792,7 @@ function kToggle(orderId) {
 
 function kSelectAll() {
   const p    = getPendingItems();
-  const allS = p.every(({ order, item }) => kSelected.has(`${order.id}::${item.itemId}`));
+  const allS = p.length > 0 && p.every(({ order, item }) => kSelected.has(`${order.id}::${item.itemId}`));
   if (allS) kSelected.clear();
   else p.forEach(({ order, item }) => kSelected.add(`${order.id}::${item.itemId}`));
   renderKitchen();
@@ -813,7 +815,7 @@ function kMarkDone() {
       else if (order.items.some(i => i.status === "completed")) order.orderStatus = "partial";
     });
     saveOrders(orders); kSelected.clear();
-    showToast(`${cnt}건 제작완료 ✓`); renderKitchen();
+    showToast(`${cnt} item(s) completed ✓`); renderKitchen();
   }, 350);
 }
 
@@ -834,8 +836,8 @@ function renderHistory() {
   const custEl  = document.getElementById("fCust");
   const curCust = custEl.value;
   const nums    = [...new Set(orders.map(o => o.customerNumber))].sort((a,b)=>a-b);
-  custEl.innerHTML = `<option value="all">전체</option>` +
-    nums.map(n=>`<option value="${n}"${curCust==n?" selected":""}>${n}번</option>`).join("");
+  custEl.innerHTML = `<option value="all">All</option>` +
+    nums.map(n=>`<option value="${n}"${curCust==n?" selected":""}>#${n}</option>`).join("");
 
   // Summary (always from full set)
   const all  = orders;
@@ -844,14 +846,14 @@ function renderHistory() {
   const pend = all.filter(o=>o.orderStatus==="pending").length;
   const avg  = all.length ? Math.round(rev/all.length) : 0;
   document.getElementById("summaryRow").innerHTML = `
-    <div class="sum-card"><div class="sum-lbl">총 주문</div><div class="sum-val purple">${all.length}</div></div>
-    <div class="sum-card"><div class="sum-lbl">총 매출</div><div class="sum-val green">¥${rev.toLocaleString()}</div></div>
-    <div class="sum-card"><div class="sum-lbl">완료</div><div class="sum-val green">${done}</div></div>
-    <div class="sum-card"><div class="sum-lbl">대기중</div><div class="sum-val orange">${pend}</div></div>
-    <div class="sum-card"><div class="sum-lbl">평균</div><div class="sum-val blue">¥${avg.toLocaleString()}</div></div>`;
+    <div class="sum-card"><div class="sum-lbl">Total Orders</div><div class="sum-val purple">${all.length}</div></div>
+    <div class="sum-card"><div class="sum-lbl">Revenue</div><div class="sum-val green">¥${rev.toLocaleString()}</div></div>
+    <div class="sum-card"><div class="sum-lbl">Completed</div><div class="sum-val green">${done}</div></div>
+    <div class="sum-card"><div class="sum-lbl">Pending</div><div class="sum-val orange">${pend}</div></div>
+    <div class="sum-card"><div class="sum-lbl">Avg</div><div class="sum-val blue">¥${avg.toLocaleString()}</div></div>`;
 
   const hb = document.getElementById("hHeaderBadge");
-  if (hb) hb.textContent = `전체 ${all.length}건`;
+  if (hb) hb.textContent = `Total: ${all.length}`;
 
   // Filter & sort
   if (sf !== "all") orders = orders.filter(o=>o.orderStatus===sf);
@@ -861,24 +863,28 @@ function renderHistory() {
   else orders.sort((a,b)=>b.total-a.total);
 
   const list = document.getElementById("orderList");
+  if (!all.length) {
+    list.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">📋</div><div class="hist-empty-title">No orders yet</div><div>Orders placed on the Order tab will appear here</div></div>`;
+    return;
+  }
   if (!orders.length) {
-    list.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">🔍</div><div class="hist-empty-title">해당 조건의 주문이 없습니다</div></div>`;
+    list.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">🔍</div><div class="hist-empty-title">No orders match the filter</div></div>`;
     return;
   }
 
-  const slMap = { completed:["완료","completed"], partial:["제작중","partial"], pending:["대기중","pending"] };
+  const slMap = { completed:["Completed","completed"], partial:["In Progress","partial"], pending:["Pending","pending"] };
   list.innerHTML = orders.map(order => {
-    const [sl, sc]  = slMap[order.orderStatus] || ["대기중","pending"];
+    const [sl, sc]  = slMap[order.orderStatus] || ["Pending","pending"];
     const isOpen    = hExpanded.has(order.id);
-    const t         = new Date(order.timestamp).toLocaleString("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+    const t         = new Date(order.timestamp).toLocaleString("en-US",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
     const detailRows = order.items.map(item => {
       const tc = item.temp==="ice"?"ice":item.temp==="hot"?"hot":"none";
       const tl = item.temp==="ice"?"🧊 Ice":item.temp==="hot"?"🔥 Hot":"−";
       return `<tr>
-        <td class="td-nm">${item.nameKo}</td>
+        <td class="td-nm">${item.name}</td>
         <td><span class="t-chip ${tc}">${tl}</span></td>
-        <td>${item.qty}개</td>
-        <td>${item.status==="completed"?`<span class="item-done-txt">✓ 완료</span>`:`<span class="item-pending-txt">⏳ 대기</span>`}</td>
+        <td>${item.qty}</td>
+        <td>${item.status==="completed"?`<span class="item-done-txt">✓ Done</span>`:`<span class="item-pending-txt">⏳ Pending</span>`}</td>
         <td class="td-sub">¥${(item.price*item.qty).toLocaleString()}</td>
       </tr>`;
     }).join("");
@@ -886,14 +892,14 @@ function renderHistory() {
       <div class="hist-row ${sc}">
         <div class="hist-row-head" onclick="hToggle('${order.id}')">
           <div class="h-dot ${sc}"></div>
-          <div><div class="h-cust-num">👤 손님 #${order.customerNumber}</div><div class="h-time">${t}</div></div>
+          <div><div class="h-cust-num">👤 Customer #${order.customerNumber}</div><div class="h-time">${t}</div></div>
           <span class="h-status-chip ${sc}">${sl}</span>
           <div class="h-total">¥${order.total.toLocaleString()}</div>
           <span class="h-expand">${isOpen?"▲":"▼"}</span>
         </div>
         <div class="hist-detail ${isOpen?"open":""}">
           <table class="hist-table">
-            <thead><tr><th>메뉴</th><th>온도</th><th>수량</th><th>상태</th><th style="text-align:right">금액</th></tr></thead>
+            <thead><tr><th>Menu</th><th>Temp</th><th>Qty</th><th>Status</th><th style="text-align:right">Amount</th></tr></thead>
             <tbody>${detailRows}</tbody>
           </table>
         </div>
@@ -907,7 +913,7 @@ function hToggle(id) {
 }
 
 function clearHistory() {
-  if (!confirm("주문 히스토리를 모두 삭제할까요?")) return;
+  if (!confirm("Delete all order history? This cannot be undone.")) return;
   localStorage.removeItem("cafe_orders");
   localStorage.setItem("cafe_update", Date.now());
   hExpanded.clear(); kSelected.clear();
