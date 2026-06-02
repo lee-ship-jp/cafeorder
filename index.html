@@ -564,7 +564,7 @@ MENU.forEach(m => { qtyMap[m.id] = 1; if (m.hasTemp) tempMap[m.id] = "ice"; });
    (see APPS_SCRIPT_SETUP.md). It looks like:
      https://script.google.com/macros/s/AKfy..../exec
    Until a valid URL is set, the app runs in LOCAL-ONLY mode.        */
-const APPS_SCRIPT_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyADbfCdbpigqruELC9WmmSBNEipNtOo1uvc0vuXfmGaeDdxzCIS18ozwSbrGt5gpgx/exec";
 const CLOUD_READY = /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(APPS_SCRIPT_URL);
 
 /* ─── ORDER CACHE (single source of truth for every screen) ─── */
