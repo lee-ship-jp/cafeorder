@@ -393,6 +393,31 @@
     .hist-empty-icon  { font-size: 3.5rem; margin-bottom: 10px; }
     .hist-empty-title { font-size: 1.1rem; font-weight: 700; color: #6B7280; margin-bottom: 4px; }
 
+    /* ===== ITEMS-SOLD BREAKDOWN (per date) ===== */
+    .sold-card {
+      background: #fff; border-radius: 12px; padding: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border: 2px solid #EDE9FE; margin-bottom: 18px;
+    }
+    .sold-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .sold-head-icon  { font-size: 1.1rem; }
+    .sold-head-title { font-size: 0.92rem; font-weight: 800; color: #5B21B6; }
+    .sold-head-date  { margin-left: auto; font-size: 0.78rem; font-weight: 700; color: #7C3AED; }
+    .sold-table { width: 100%; border-collapse: collapse; }
+    .sold-table th {
+      text-align: left; font-size: 0.7rem; color: #9CA3AF; text-transform: uppercase;
+      padding: 5px 10px; border-bottom: 1px solid #F3F4F6; background: #FAFAFA;
+    }
+    .sold-table td { padding: 7px 10px; font-size: 0.85rem; border-bottom: 1px solid #F9FAFB; }
+    .sold-table tbody tr:last-child td { border-bottom: none; }
+    .sold-rank { color: #9CA3AF; font-weight: 700; width: 24px; }
+    .sold-name { font-weight: 600; color: #1F2937; }
+    .sold-qty  { font-weight: 800; color: #5B21B6; text-align: center; }
+    .sold-rev  { text-align: right; font-weight: 700; color: #16A34A; }
+    .sold-temp-mini { font-size: 0.72rem; color: #9CA3AF; font-weight: 600; }
+    .sold-foot td { font-weight: 800; color: #1F2937; border-top: 2px solid #EDE9FE; background: #FAF5FF; }
+    .sold-empty { text-align: center; color: #9CA3AF; padding: 14px; font-size: 0.85rem; }
+
     /* ===== TOAST ===== */
     .toast {
       position: fixed; top: 66px; left: 50%;
@@ -490,6 +515,10 @@
         <select class="filt-sel" id="fCust" onchange="renderHistory()">
           <option value="all">All</option>
         </select>
+        <span class="filt-lbl">📅 Date:</span>
+        <select class="filt-sel" id="fDate" onchange="renderHistory()">
+          <option value="all">All dates</option>
+        </select>
         <span class="filt-lbl">Sort:</span>
         <select class="filt-sel" id="fSort" onchange="renderHistory()">
           <option value="newest">Newest</option>
@@ -498,6 +527,7 @@
         </select>
         <button class="clear-hist-btn" onclick="clearHistory()">🗑 Clear All</button>
       </div>
+      <div id="soldBreakdown"></div>
       <div class="order-list" id="orderList"></div>
     </div>
   </div>
@@ -936,36 +966,118 @@ function updateKNavBadge() {
 }
 
 /* ══════════ HISTORY SCREEN ══════════ */
+/* Local YYYY-MM-DD key for an ISO timestamp (groups orders by calendar day) */
+function dayKey(ts) {
+  const d = new Date(ts);
+  const m   = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+/* Friendly date label, e.g. "Jun 8, 2026 (Sun)" */
+function dayLabel(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US",
+    { year: "numeric", month: "short", day: "numeric", weekday: "short" });
+}
+
+/* Aggregate items sold for a set of orders → per-menu breakdown panel */
+function renderSoldBreakdown(orders, df) {
+  const wrap    = document.getElementById("soldBreakdown");
+  const dateTxt = df === "all" ? "All dates" : dayLabel(df);
+  const map = {};
+  orders.forEach(o => o.items.forEach(it => {
+    const r = map[it.name] || (map[it.name] = { name: it.name, qty: 0, revenue: 0, ice: 0, hot: 0 });
+    r.qty     += it.qty;
+    r.revenue += it.price * it.qty;
+    if (it.temp === "ice")      r.ice += it.qty;
+    else if (it.temp === "hot") r.hot += it.qty;
+  }));
+  const rows = Object.values(map).sort((a, b) => b.qty - a.qty || b.revenue - a.revenue);
+
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="sold-card">
+      <div class="sold-head"><span class="sold-head-icon">🧾</span>
+        <span class="sold-head-title">Items Sold</span>
+        <span class="sold-head-date">${dateTxt}</span></div>
+      <div class="sold-empty">No items sold for this date</div>
+    </div>`;
+    return;
+  }
+  const totalQty = rows.reduce((s, r) => s + r.qty, 0);
+  const totalRev = rows.reduce((s, r) => s + r.revenue, 0);
+  const body = rows.map((r, i) => {
+    const bits = [];
+    if (r.ice) bits.push(`🧊${r.ice}`);
+    if (r.hot) bits.push(`🔥${r.hot}`);
+    const temp = bits.length ? `<br><span class="sold-temp-mini">${bits.join("&nbsp;&nbsp;")}</span>` : "";
+    return `<tr>
+      <td class="sold-rank">${i + 1}</td>
+      <td class="sold-name">${r.name}${temp}</td>
+      <td class="sold-qty">${r.qty}</td>
+      <td class="sold-rev">¥${r.revenue.toLocaleString()}</td>
+    </tr>`;
+  }).join("");
+  wrap.innerHTML = `<div class="sold-card">
+    <div class="sold-head"><span class="sold-head-icon">🧾</span>
+      <span class="sold-head-title">Items Sold</span>
+      <span class="sold-head-date">${dateTxt}</span></div>
+    <table class="sold-table">
+      <thead><tr><th>#</th><th>Menu</th><th style="text-align:center">Qty</th><th style="text-align:right">Revenue</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr class="sold-foot">
+        <td></td><td>Total · ${rows.length} kinds</td>
+        <td class="sold-qty">${totalQty}</td>
+        <td class="sold-rev">¥${totalRev.toLocaleString()}</td>
+      </tr></tfoot>
+    </table>
+  </div>`;
+}
+
 function renderHistory() {
-  let orders = getOrders();
+  const allOrders = getOrders();
   const sf   = document.getElementById("fStatus").value;
   const cf   = document.getElementById("fCust").value;
+  let   df   = document.getElementById("fDate").value;
   const sort = document.getElementById("fSort").value;
+
+  // Date filter options (newest day first); reset to "all" if the day no longer exists
+  const dateEl = document.getElementById("fDate");
+  const days   = [...new Set(allOrders.map(o => dayKey(o.timestamp)))].sort((a, b) => b.localeCompare(a));
+  if (df !== "all" && !days.includes(df)) df = "all";
+  dateEl.innerHTML = `<option value="all">All dates</option>` +
+    days.map(d => `<option value="${d}"${df === d ? " selected" : ""}>${dayLabel(d)}</option>`).join("");
 
   // Customer filter options
   const custEl  = document.getElementById("fCust");
   const curCust = custEl.value;
-  const nums    = [...new Set(orders.map(o => o.customerNumber))].sort((a,b)=>a-b);
+  const nums    = [...new Set(allOrders.map(o => o.customerNumber))].sort((a,b)=>a-b);
   custEl.innerHTML = `<option value="all">All</option>` +
     nums.map(n=>`<option value="${n}"${curCust==n?" selected":""}>#${n}</option>`).join("");
 
-  // Summary (always from full set)
-  const all  = orders;
-  const rev  = all.reduce((s,o)=>s+o.total,0);
-  const done = all.filter(o=>o.orderStatus==="completed").length;
-  const pend = all.filter(o=>o.orderStatus==="pending").length;
-  const avg  = all.length ? Math.round(rev/all.length) : 0;
+  // Orders for the selected day — drives the summary and the items-sold breakdown
+  const dateSet = df === "all" ? allOrders : allOrders.filter(o => dayKey(o.timestamp) === df);
+
+  // Summary (reflects the selected date)
+  const rev  = dateSet.reduce((s,o)=>s+o.total,0);
+  const done = dateSet.filter(o=>o.orderStatus==="completed").length;
+  const pend = dateSet.filter(o=>o.orderStatus==="pending").length;
+  const avg  = dateSet.length ? Math.round(rev/dateSet.length) : 0;
   document.getElementById("summaryRow").innerHTML = `
-    <div class="sum-card"><div class="sum-lbl">Total Orders</div><div class="sum-val purple">${all.length}</div></div>
+    <div class="sum-card"><div class="sum-lbl">Total Orders</div><div class="sum-val purple">${dateSet.length}</div></div>
     <div class="sum-card"><div class="sum-lbl">Revenue</div><div class="sum-val green">¥${rev.toLocaleString()}</div></div>
     <div class="sum-card"><div class="sum-lbl">Completed</div><div class="sum-val green">${done}</div></div>
     <div class="sum-card"><div class="sum-lbl">Pending</div><div class="sum-val orange">${pend}</div></div>
     <div class="sum-card"><div class="sum-lbl">Avg</div><div class="sum-val blue">¥${avg.toLocaleString()}</div></div>`;
 
   const hb = document.getElementById("hHeaderBadge");
-  if (hb) hb.textContent = `Total: ${all.length}`;
+  if (hb) hb.textContent = `Total: ${dateSet.length}`;
 
-  // Filter & sort
+  // What was sold on the selected date
+  renderSoldBreakdown(dateSet, df);
+
+  // Per-order list: date → status → customer → sort
+  let orders = dateSet.slice();
+  const all  = allOrders;
   if (sf !== "all") orders = orders.filter(o=>o.orderStatus===sf);
   if (cf !== "all") orders = orders.filter(o=>o.customerNumber==cf);
   if (sort === "oldest")  orders.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
